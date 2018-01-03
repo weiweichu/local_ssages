@@ -1,0 +1,57 @@
+{
+	"type" : "object",
+	"varname" : "ForwardFluxMethod",
+	"properties" : {
+		"type" : { 
+			"type" : "string",
+			"enum" : ["ForwardFlux"]
+		},
+		"flavor" : {
+			"type" : "string"
+		},
+		"nInterfaces" : {
+			"type" : "integer",
+			"minimum" : 2
+		},
+		"interfaces" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "number"
+			}
+		},
+		"N0Target" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"trials" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "integer"
+			}
+		},
+		"computeInitialFlux" : {
+			"type" : "boolean"
+		},
+		"saveTrajectories" : {
+			"type" : "boolean"
+		},
+		"currentInterface" : {
+			"type" : "integer",
+			"minimum" : 0
+		},
+		"frequency" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"outputDirectoryName" : {
+			"type" : "string"
+		},
+		"cvs" : {
+			"type" : "array"
+		}
+	},
+	"required": ["type", "flavor", "nInterfaces", "interfaces", "computeInitialFlux"],
+	"additionalProperties": false
+}

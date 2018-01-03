@@ -1,0 +1,34 @@
+{
+	"walkers" : 1,
+	"input" : ["in.NaCl_BFS_example0"],
+    "CVs" : [
+        {
+            "type" : "ParticleSeparation",
+            "group1" : [ 319 ],
+            "group2" : [ 320 ]
+        }
+    ],
+    "methods" : [{
+        "type" : "BFSMethod",
+        "basis_functions" : [
+        {
+            "type" :"Legendre", 
+            "polynomial_order" : 15
+        }],
+        "cvs" : [0],
+        "cycle_frequency" : 10000,
+        "frequency" : 1,
+        "weight" : 1000.0,
+        "basis_filename" : "nacl_example",
+        "CV_restraint_spring_constants" : [ 1000 ],
+        "CV_restraint_maximums" : [ 7.01 ],
+        "CV_restraint_minimums" : [ 2.0 ],
+        "convergence_exit" : true,
+        "grid" : {
+                "lower" : [2.2],
+                "upper" : [7.0],
+                "number_points" : [100],
+                "periodic" : [false]
+        }
+    }]
+}

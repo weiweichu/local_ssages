@@ -1,0 +1,21 @@
+{
+	"type" : "object",
+	"varname" : "ElasticBandMethod",
+	"properties" : {
+		"equilibration_steps" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"evolution_steps" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"kstring" : {
+			"type" : "number"
+		},
+		"cvs" : {
+			"type" : "array"
+		}
+	},
+	"required": ["equilibration_steps", "evolution_steps", "kstring"]
+}

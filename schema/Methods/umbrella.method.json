@@ -1,0 +1,144 @@
+{
+	"type" : "object",
+	"varname" : "UmbrellaMethod",
+	"properties" : {
+		"type" : { 
+			"type" : "string",
+			"enum" : ["Umbrella"]
+		},
+		"ksprings" : {
+			"oneOf" : [
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "number"
+					}
+				},
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "array",
+						"minItems" : 1,
+						"items" : {
+							"type" : "number"
+						}
+					}
+				}
+			]
+		},
+		"centers" : {
+			"oneOf" : [
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "number"
+					}
+				},
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "array",
+						"minItems" : 1,
+						"items" : {
+							"type" : "number"
+						}
+					}
+				}
+			]
+		},
+		"centers0" : {
+			"oneOf" : [
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "number"
+					}
+				},
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "array",
+						"minItems" : 1,
+						"items" : {
+							"type" : "number"
+						}
+					}
+				}
+			]
+		},
+		"centers1" : {
+			"oneOf" : [
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "number"
+					}
+				},
+				{
+					"type" : "array",
+					"minItems" : 1,
+					"items" : {
+						"type" : "array",
+						"minItems" : 1,
+						"items" : {
+							"type" : "number"
+						}
+					}
+				}
+			]
+		},
+		"timesteps" : {
+			"oneOf" :[
+				{
+					"type" : "integer",
+					"minimum" : 0
+				},
+				{
+					"type" : "array", 
+					"minItems" : 1, 
+					"items" :{
+						"type" : "integer", 
+						"minimum" : 0
+					}
+				}
+			]
+		},
+		"frequency" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"output_file" :{
+			"oneOf" : [
+				{
+					"type" : "string"
+				}, 
+				{
+					"type" : "array", 
+					"minItems" : 1, 
+					"items" : {
+						"type" : "string"
+					}
+				}
+			]
+		},
+		"output_frequency" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"cvs" : {
+			"type" : "array"
+		},
+		"append" : {
+			"type" : "boolean"
+		}
+	},
+	"required": ["type", "ksprings", "output_file"],
+	"additionalProperties": false
+}
