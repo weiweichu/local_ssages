@@ -1,0 +1,132 @@
+diff -ruN /gromacs-original/src/gromacs/gmxlib/main.cpp /gromacs-ssages/src/gromacs/gmxlib/main.cpp
+--- /gromacs-original/src/gromacs/gmxlib/main.cpp	2017-02-11 08:50:15.950023900 -0500
++++ /gromacs-ssages/src/gromacs/gmxlib/main.cpp	2017-02-11 09:18:09.046910100 -0500
+@@ -61,6 +61,8 @@
+ #include "gromacs/utility/snprintf.h"
+ #include "gromacs/utility/sysinfo.h"
+ 
++#include "GromacsHook.h"
++
+ /* The source code in this file should be thread-safe.
+          Please keep it that way. */
+ 
+@@ -340,7 +342,11 @@
+     cr->sim_nodeid = cr->nodeid % nnodpersim;
+     cr->nnodes     = nnodpersim;
+ #ifdef GMX_MPI
+-    MPI_Comm_split(MPI_COMM_WORLD, sim, cr->sim_nodeid, &cr->mpi_comm_mysim);
++    // Get SSAGES communicator and assign.
++    auto& ssages = SSAGES::GromacsHook::Instance();
++    auto comm = ssages.GetCommunicator();
++    cr->mpi_comm_mysim = comm;
++    //MPI_Comm_split(MPI_COMM_WORLD, sim, cr->sim_nodeid, &cr->mpi_comm_mysim);
+     cr->mpi_comm_mygroup = cr->mpi_comm_mysim;
+     cr->nodeid           = cr->sim_nodeid;
+ #endif
+diff -ruN /gromacs-original/src/programs/CMakeLists.txt /gromacs-ssages/src/programs/CMakeLists.txt
+--- /gromacs-original/src/programs/CMakeLists.txt	2017-02-11 08:50:24.372868500 -0500
++++ /gromacs-ssages/src/programs/CMakeLists.txt	2017-02-11 09:18:09.049653100 -0500
+@@ -35,6 +35,12 @@
+ file(GLOB MDRUN_SOURCES mdrun/*.c mdrun/*.cpp)
+ # make an "object library" that we can re-use for multiple targets
+ add_library(mdrun_objlib OBJECT ${MDRUN_SOURCES})
++add_library(mdrun STATIC $<TARGET_OBJECTS:mdrun_objlib>)
++install(TARGETS mdrun
++        EXPORT mdrun
++        LIBRARY DESTINATION ${LIB_INSTALL_DIR}
++        ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
++        COMPONENT libraries)
+ 
+ if(GMX_FAHCORE)
+     # The lack of a real source file here alongside the object library
+diff -ruN /gromacs-original/src/programs/mdrun/md.cpp /gromacs-ssages/src/programs/mdrun/md.cpp
+--- /gromacs-original/src/programs/mdrun/md.cpp	2017-02-11 08:50:24.178565400 -0500
++++ /gromacs-ssages/src/programs/mdrun/md.cpp	2017-03-08 22:26:41.000000000 -0500
+@@ -111,6 +111,7 @@
+ #include "gromacs/utility/fatalerror.h"
+ #include "gromacs/utility/real.h"
+ #include "gromacs/utility/smalloc.h"
++#include "GromacsHook.h"
+ 
+ #include "deform.h"
+ #include "membed.h"
+@@ -647,6 +648,44 @@
+         fprintf(fplog, "\n");
+     }
+ 
++    // Setup SSAGES singleton and lambdas.
++    auto& ssages = SSAGES::GromacsHook::Instance();
++    ssages.SetPeriodicBoundaryConditions(ir->ePBC);
++    ssages.SetGMXPush([&](){
++        // Begin SSAGES.
++        auto natoms = top_global->natoms;
++        int* ids = nullptr;
++        if(PAR(cr) && DOMAINDECOMP(cr))
++        {
++            natoms = cr->dd->nat_home;
++            ids = cr->dd->gatindex;
++        }
++        ssages.PushToGromacs(natoms, ids, mdatoms->typeA, mdatoms->massT, state->x, state->v, f, force_vir);
++    });
++    ssages.SetGMXPull([&](){
++        // Begin SSAGES.
++        auto natoms = top_global->natoms;
++        int* ids = nullptr;
++        if(PAR(cr) && DOMAINDECOMP(cr))
++        {
++            natoms = cr->dd->nat_home;
++            ids = cr->dd->gatindex;
++        }
++        ssages.PullToSSAGES(
++            step, 
++            natoms, 
++            ids, 
++            mdatoms->typeA, 
++            mdatoms->massT, 
++            state->x, 
++            state->v, 
++            f,
++            state->box,
++            enerd->term[F_TEMP], 
++            enerd->term[F_EPOT], 
++            BOLTZ);
++    });
++
+     walltime_accounting_start(walltime_accounting);
+     wallcycle_start(wcycle, ewcRUN);
+     print_start(fplog, cr, walltime_accounting, "mdrun");
+@@ -738,6 +777,9 @@
+     }
+ 
+ 
++    ssages.SyncToSSAGES();
++    ssages.PreSimulationHook();
++
+     /* and stop now if we should */
+     bLastStep = (bRerunMD || (ir->nsteps >= 0 && step_rel > ir->nsteps) ||
+                  ((multisim_nsteps >= 0) && (step_rel >= multisim_nsteps )));
+@@ -1083,6 +1125,9 @@
+                      state->lambda, graph,
+                      fr, vsite, mu_tot, t, mdoutf_get_fp_field(outf), ed, bBornRadii,
+                      (bNS ? GMX_FORCE_NS : 0) | force_flags);
++
++            ssages.SyncToSSAGES();
++            ssages.PostIntegrationHook();
+         }
+ 
+         if (bVV && !bStartingFromCpt && !bRerunMD)
+@@ -1784,10 +1829,14 @@
+         /* If bIMD is TRUE, the master updates the IMD energy record and sends positions to VMD client */
+         IMD_prep_energies_send_positions(ir->bIMD && MASTER(cr), bIMDstep, ir->imd, enerd, step, bCalcEner, wcycle);
+ 
++        ssages.PostStepHook();
+     }
+     /* End of main MD loop */
+     debug_gmx();
+ 
++    ssages.SyncToSSAGES();
++    ssages.PostSimulationHook();
++
+     /* Closing TNG files can include compressing data. Therefore it is good to do that
+      * before stopping the time measurements. */
+     mdoutf_tng_close(outf);

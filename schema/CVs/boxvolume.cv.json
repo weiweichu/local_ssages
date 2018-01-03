@@ -1,0 +1,23 @@
+{
+    "type" : "object",
+    "varname" : "BoxVolumeCV",
+    "properties" : {
+        "type" : {
+            "type" : "string",
+            "enum" : ["BoxVolume"]
+        },
+        "bounds" : {
+			"type" : "array",
+			"minItems" : 2,
+			"maxItems" : 2,
+			"items" : {
+				"type" : "number"
+			}
+		}, 
+		"name" : {
+			"type" : "string"
+		}
+    },
+    "required" : ["type"],
+    "additionalProperties" : false
+}

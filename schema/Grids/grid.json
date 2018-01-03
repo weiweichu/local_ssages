@@ -1,0 +1,36 @@
+{
+    "type" : "object",
+    "varname" : "grid",
+	"properties" : {
+		"lower" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "number"
+			}
+		},
+		"upper" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "number"
+			}
+		},
+		"number_points" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "number"
+			}
+		},
+		"periodic" : {
+			"type" : "array",
+			"minItems" : 1,
+			"items" : {
+				"type" : "boolean"
+			}
+		}
+	},
+	"required" : ["lower", "upper", "number_points"],
+	"additionalProperties" : false
+}

@@ -1,0 +1,25 @@
+{
+	"input" : ["in.LAMMPS_FF_Test_1d"],
+	"walkers": 2,
+	"CVs" : [
+		{
+			"type" : "ParticleCoordinate",
+			"atom_ids" : [1],
+			"dimension" : "x"
+		}
+    ],
+	"methods" : [
+		{
+			"type" : "ForwardFlux",
+			"flavor" : "DirectForwardFlux",
+			"currentInterface" : 0,
+			"trials" : [],
+			"interfaces" : [],
+			"nInterfaces" : 5,
+			"N0Target" : 100,
+			"computeInitialFlux" : true,
+			"outputDirectoryName" : "FFSoutput",
+			"saveTrajectories" : true
+		}
+	]
+}

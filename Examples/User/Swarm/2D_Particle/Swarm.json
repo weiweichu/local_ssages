@@ -1,0 +1,110 @@
+{
+    "input": "in.LAMMPS_2DParticle",
+    "CVs": [
+        {
+            "atom_ids": [
+                1
+            ],
+            "type": "ParticleCoordinate",
+            "dimension": "x"
+        },
+        {
+            "atom_ids": [
+                1
+            ],
+            "type": "ParticleCoordinate",
+            "dimension": "y"
+        }
+    ],
+    "walkers": 16,
+    "methods": [
+        {
+            "initial_steps": 1000,
+            "type": "String",
+            "cvs": [
+                0,
+                1
+            ],
+            "ksprings": [
+                500,
+                500
+            ],
+            "frequency": 1,
+            "number_of_trajectories": 200,
+            "swarm_length": 2,
+            "harvest_length": 10,
+            "flavor": "SWARM",
+            "tolerance": [
+                0.0001,
+                0.0001
+            ],
+            "centers": [
+                [
+                    -0.98,
+                    -0.98
+                ],
+                [
+                    -0.849,
+                    -0.849
+                ],
+                [
+                    -0.719,
+                    -0.719
+                ],
+                [
+                    -0.588,
+                    -0.588
+                ],
+                [
+                    -0.457,
+                    -0.457
+                ],
+                [
+                    -0.327,
+                    -0.327
+                ],
+                [
+                    -0.196,
+                    -0.196
+                ],
+                [
+                    -0.065,
+                    -0.065
+                ],
+                [
+                    0.065,
+                    0.065
+                ],
+                [
+                    0.196,
+                    0.196
+                ],
+                [
+                    0.327,
+                    0.327
+                ],
+                [
+                    0.457,
+                    0.457
+                ],
+                [
+                    0.588,
+                    0.588
+                ],
+                [
+                    0.719,
+                    0.719
+                ],
+                [
+                    0.849,
+                    0.849
+                ],
+                [
+                    0.98,
+                    0.98
+                ]
+            ],
+            "max_iterations": 1000
+        }
+    ]
+}
