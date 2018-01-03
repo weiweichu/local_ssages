@@ -1,9 +1,0 @@
-{
-	"varname" : "Method",
-	"type" : "object", 
-	"properties" : {
-		"cvs" : {
-			"type" : "array"
-		}
-	}
-}
