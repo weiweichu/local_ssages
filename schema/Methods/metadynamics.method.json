@@ -6,6 +6,10 @@
 			"type" : "string",
 			"enum" : ["Metadynamics"]
 		},
+    "flavor" : {
+      "type" : "string",
+      "enum" : ["Standard", "WellTemperedMeta"]
+    },
 		"widths" : {
 			"type" : "array",
 			"minItems" : 1,
@@ -57,6 +61,15 @@
 		"grid" : {
 			"type" : "object"
 		},
+    "delta_T" : {
+      "type" : "number"
+    },
+    "read_potential" : {
+      "type" : "number"
+    },
+    "potential_freq" : {
+      "type" : "number"
+    },
 		"load_hills" : {
 			"type" : "string"
 		},
@@ -66,6 +79,7 @@
 	},
 	"required": [
 		"type", 
+    "flavor",
 		"widths", 
 		"height",
 		"lower_bound_restraints",

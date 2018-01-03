@@ -39,16 +39,22 @@ link_directories(${MPI_CXX_LIBRARIES})
 # General source files
 set(SOURCE
 	src/Methods/ABF.cpp
+<<<<<<< HEAD
+  src/Methods/BasisFunc.cpp
+=======
 	src/Methods/ANN.cpp
   	src/Methods/BasisFunc.cpp
+>>>>>>> 6c0a0267557865f6268eeaa8406d620267d036c9
 	src/Methods/DirectForwardFlux.cpp
 	src/Methods/ElasticBand.cpp
 	src/Methods/FiniteTempString.cpp
 	src/Methods/ForwardFlux.cpp
 	src/Methods/Meta.cpp
+  src/Methods/StandardMeta.cpp
+	src/Methods/WellTemperedMeta.cpp
 	src/Methods/Method.cpp
 	src/Methods/StringMethod.cpp
-  	src/Methods/Swarm.cpp
+  src/Methods/Swarm.cpp
 	src/Methods/Umbrella.cpp
 #	src/Constraints/Constraint.cpp
 #	src/Constraints/COPSSImage.cpp
@@ -57,7 +63,7 @@ set(SOURCE
 	src/Validator/RequirementLoader.cpp
 	src/JSON/jsoncpp.cpp
 	src/Utility/PairwiseKernel.cpp
-    src/Utility/Basis.cpp
+  src/Utility/Basis.cpp
 	src/Hook.cpp
 	src/ResourceHandler.cpp
 	"include/nnet/nnet.cpp"

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#SBATCH --job-name=std
+#SBATCH --partition=depablo
+#SBATCH --share
+#SBATCK --constraint=e5-2680v2
+#SBATCH --time=24:00:00
+#SBATCH --output=zout
+#SBATCH --error=zerr
+#SBATCH --nodes=1
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=weiweichu@uchicago.edu
+
+module unload intelmpi
+module unload openmpi
+module load gcc/6.1
+module load cmake
+module load boost/1.58+openmpi-1.8
+
+echo " "
+echo "Job started on `hostname` at `date`"
+mpirun -np 1 ./ssages Standard1.json
+echo "Job ended at `date`"
+echo " "

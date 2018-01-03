@@ -28,36 +28,37 @@
 
 namespace SSAGES
 {
+
 	//! Multidimensional hill
 	/*!
 	 * Structure representing a multidimensional hill (Gaussian) which is
 	 * centered at "center" with widths "width" of height "height". A
 	 * multidimensional Gaussian has one height but n centers and widths.
 	 */
-	struct Hill 
-	{
-		//! Hill center.
-		std::vector<double> center;
-
-		//! Hill width.
-		std::vector<double> width;
-
-		//! Hill height.
-		double height;
-		
-		//! Constructs a multidimensional Hill (Gaussian)
-		/*!
-		 * \param center Hill center.
-		 * \param sigma Hill width.
-		 * \param height Hill height.
-		 */
-		Hill(const std::vector<double>& center, 
-			 const std::vector<double>& sigma, 
-			 double height) :
-		 center(center), width(sigma), height(height)
-		{}
-	};
-
+  	class Hill 
+   	{
+      public:
+   	  //! Hill center.
+   	  std::vector<double> center;
+   
+   	  //! Hill width.
+   	  std::vector<double> width;
+   
+   	  //! Hill height.
+      double height;
+   	 
+   	  //! Constructs a multidimensional Hill (Gaussian)
+   	  /*!
+   	   * \param center Hill center.
+   	   * \param sigma Hill width.
+   	   * \param height Hill height.
+   	   */
+   	  Hill(const std::vector<double>& center, 
+   	  	 const std::vector<double>& sigma, 
+   	  	 double height) :
+   	   center(center), width(sigma), height(height)
+   	  {}
+   	};
 	//! "Vanilla" multi-dimensional Metadynamics.
 	/*!
 	 * Implementation of a "vanilla" multi-dimensional Metadynamics method with
@@ -67,12 +68,12 @@ namespace SSAGES
 	 */
 	class Meta : public Method
 	{
-	private:	
+	protected:	
 		//! Hills.
 		std::vector<Hill> hills_;
 
 		//! Hill height.
-		double height_;
+	  double height_;
 
 		//! Hill widths.
 		std::vector<double> widths_;
@@ -83,8 +84,25 @@ namespace SSAGES
 		//! Frequency of new hills
 		unsigned int hillfreq_;
 
-		//! CV Grid. 
+    //! Frequency of output added potential
+    unsigned int potential_freq_;
+
+		//! CV Grid.
+    // grid is used to store the derivative of potential to CV, that is dV/dCV. 
+    // This is a summation from each addhilll step. 
+    // At each grid point, there is a n-dimension vector, where n is the size of
+    // CV. This stores dV/dCV_i.
+    // This multiplies by CV gradient dCV/dx, we can get dV/dx, which is the biasing
+    // force.
 		Grid<Vector>* grid_;
+
+    //! Potential sum Grid.
+    // grid_potential is used to store the summation of already dropped
+    // potential.
+    // At each grid point, there is a double, which is the product of potential
+    // on each CV. 
+    // This is used to calculate the height of a new hill.  
+    Grid<double>* grid_potential_;
 
 		//! Bounds 
 		std::vector<double> upperb_, lowerb_; 
@@ -92,28 +110,74 @@ namespace SSAGES
 		//! Bound restraints. 
 		std::vector<double> upperk_, lowerk_;
 
+    //! Whether read in initial potential or not.
+    bool potential_initial_;
+
+    //! Starting timestep for rerun.
+    double setoff_;
+
+    //! Evlauate Gaussian. Helper function.
+    /*!
+     * \param dx x-value.
+     * \param sigma Width of Gaussian
+     * \return Value at x of Gaussian with center at zero and width sigma.
+     */
+    double gaussian(double dx, double sigma)
+    {
+      double arg = (dx * dx) / (2. * sigma * sigma);
+      return exp(-arg);
+    }
+
+    //! Evaluate Gaussian derivative. Helper function.
+    /*!
+     * \param dx Value of x.
+     * \param sigma Width of Gaussian.
+     * \return Derivative at x of Gaussian with center at zero and width sigma.
+     */
+    double gaussianDerv(double dx, double sigma)
+    {
+      double arg =  (dx * dx) / (2. * sigma * sigma);
+      double pre = - dx / (sigma * sigma);
+      return pre * exp(-arg);
+    }
+
+		//! Pre-simulation hook.
+		/*!
+		 * \param snapshot Current simulation snapshot.
+		 * \param cvmanager Collective variable manager.
+		 */
+		virtual void PreSimulation(Snapshot* snapshot, const class CVManager& cvmanager) = 0;
 		//! Adds a new hill.
 		/*!
 		 * \param cvs List of CVs.
 		 * \param iteration Current iteration.
 		 */
-		void AddHill(const CVList& cvs, int iteration);
+		virtual void AddHill(const CVList& cvs, int iteration) = 0;
 
 		//! Computes the bias force.
 		/*!
 		 * \param cvs List of CVs.
 		 */
-		void CalcBiasForce(const CVList& cvs);
+		virtual void CalcBiasForce(const CVList& cvs) = 0;
 
 		//! Prints the new hill to file
 		/*!
 		 * \param hill Hill to be printed.
 		 * \param iteration Current iteration.
 		 */
-		void PrintHill(const Hill& hill, int interation);
+		void PrintHill(const Hill& hill, int iteration);
 
 		//! Output stream for hill data.
 		std::ofstream hillsout_;
+
+    //! Output stream for potential data.
+    std::ofstream potential_out_;
+
+    //! Printout potential at certain timesteps.
+    void PrintPotential(const Hill& hill, int iteration);
+   
+   //! Read potentials at a certain timestep from file. 
+    void ReadPotential(int timestep);
 
 	public:
 		//! Constructor
@@ -123,6 +187,7 @@ namespace SSAGES
 		 * \param height Height of the hills to be deposited.
 		 * \param widths Width of the hills to be deposited.
 		 * \param hillfreq Frequency of depositing hills.
+     * \param potential_freq Frequency of output added potentials.
 		 * \param frequency Frequency of invoking this method.
 		 *
 		 * Constructs an instance of Metadynamics method.
@@ -131,27 +196,22 @@ namespace SSAGES
 		 */
 		Meta(const MPI_Comm& world,
 			 const MPI_Comm& comm,
-			 double height, 
-			 const std::vector<double>& widths, 
+			 double height,
+			 const std::vector<double>& widths,
 			 const std::vector<double>& lowerb,
 			 const std::vector<double>& upperb,
 			 const std::vector<double>& lowerk,
 			 const std::vector<double>& upperk,
 			 Grid<Vector>* grid,
+       Grid<double>* grid_potential,
 			 unsigned int hillfreq,
-			 unsigned int frequency) : 
+       unsigned int potential_freq,
+			 unsigned int frequency) :
 		Method(frequency, world, comm), hills_(), height_(height), widths_(widths), 
-		derivatives_(0), tder_(0), dx_(0), hillfreq_(hillfreq), grid_(grid),
-		upperb_(upperb), lowerb_(lowerb), upperk_(upperk), lowerk_(lowerk)
+		derivatives_(0), tder_(0), dx_(0), hillfreq_(hillfreq), potential_freq_(potential_freq), grid_(grid), grid_potential_(grid_potential), 
+		upperb_(upperb), lowerb_(lowerb), upperk_(upperk), lowerk_(lowerk), potential_initial_(false), setoff_(0)
 		{
 		}
-
-		//! Pre-simulation hook.
-		/*!
-		 * \param snapshot Current simulation snapshot.
-		 * \param cvmanager Collective variable manager.
-		 */
-		void PreSimulation(Snapshot* snapshot, const class CVManager& cvmanager) override;
 
 		//! Post-integration hook.
 		/*!

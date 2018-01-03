@@ -1,0 +1,41 @@
+{
+    "input" : "in.WellTemperedMetaTest",
+    "walkers" : 1,
+    "CVs" : [
+        {
+            "type" : "ParticleCoordinate",
+            "atom_ids" : [1],
+            "dimension" : "x"
+        },
+        {
+            "type" : "ParticleCoordinate",
+            "atom_ids" : [1],
+            "dimension" : "y"
+        }
+    ],
+    "methods" : [
+        {
+            "type" : "Metadynamics",
+            "flavor" : "WellTemperedMeta",
+            "grid" : {
+                       "lower" : [-1.5, -1.5],
+                       "upper" : [2.0, 2.0],
+                       "number_points" : [50, 50],
+                       "periodic" : [true, true]
+            },
+            "widths" : [
+                0.1,
+                0.1
+            ],
+            "hill_frequency" : 500,
+            "height" : 1, 
+            "read_potential" : -1,
+            "delta_T" : 500,
+            "lower_bounds" : [-1.5, -1.5], 
+            "upper_bounds" : [ 2.0,  2.0],
+            "lower_bound_restraints" : [0, 0], 
+            "upper_bound_restraints" : [0, 0],
+            "potential_freq" : 50000
+        }
+    ]
+}

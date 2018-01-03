@@ -20,6 +20,8 @@
  * along with SSAGES.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "Meta.h"
+#include "StandardMeta.h"
+#include "WellTemperedMeta.h"
 #include <math.h>
 #include <iostream>
 #include "Drivers/DriverException.h"
@@ -33,69 +35,6 @@ using namespace Json;
 
 namespace SSAGES
 {
-	//! Evlauate Gaussian. Helper function.
-	/*!
-	 * \param dx x-value.
-	 * \param sigma Width of Gaussian
-	 * \return Value at x of Gaussian with center at zero and width sigma.
-	 */
-	double gaussian(double dx, double sigma)
-	{
-		double arg = (dx * dx) / (2. * sigma * sigma);
-		return exp(-arg);
-	}
-
-	//! Evaluate Gaussian derivative. Helper function.
-	/*!
-	 * \param dx Value of x.
-	 * \param sigma Width of Gaussian.
-	 * \return Derivative at x of Gaussian with center at zero and width sigma.
-	 */
-	double gaussianDerv(double dx, double sigma)
-	{
-		double arg =  (dx * dx) / (2. * sigma * sigma);
-		double pre = - dx / (sigma * sigma);
-		return pre * exp(-arg);
-	}
-
-	// Pre-simulation hook.
-	void Meta::PreSimulation(Snapshot* snapshot, const CVManager& cvmanager)
-	{
-		auto cvs = cvmanager.GetCVs(cvmask_);
-		// Write ouput file header.
-		if(world_.rank() == 0)
-		{
-			hillsout_.open("hills.out");
-			hillsout_ << "#Iteration "; 
-
-			for(size_t i = 0; i < cvs.size(); ++i)
-				hillsout_ << "center." << i << " ";
-	
-			for(size_t i = 0; i < cvs.size(); ++i)
-				hillsout_ << "sigma." << i << " ";
-			
-			hillsout_ << "height" << std::endl;
-				
-			hillsout_.close();
-		}
-
-		// Initialize grid to zero. 
-		if(grid_ != nullptr)
-		{
-			Vector vec = Vector::Zero(cvs.size());
-			std::fill(grid_->begin(), grid_->end(), vec);
-		} 
-
-		auto n = snapshot->GetTargetIterations();
-		n = n ? n : 1e5; // Pre-allocate at least something.
-	
-		hills_.reserve(n+1);
-		widths_.reserve(n+1);
-		derivatives_.resize(cvs.size());
-		tder_.resize(cvs.size());
-		dx_.resize(cvs.size());
-	}
-
 	// Post-integration hook.
 	void Meta::PostIntegration(Snapshot* snapshot, const CVManager& cvmanager)
 	{
@@ -106,7 +45,10 @@ namespace SSAGES
 
 		// Always calculate the current bias.
 		CalcBiasForce(cvs);
-
+    if(grid_ != nullptr && potential_freq_ != 0 && snapshot->GetIteration() % potential_freq_ == 0)
+    {
+      PrintPotential(hills_.back(), snapshot->GetIteration());
+    }
 		// Take each CV and add its biased forces to the atoms
 		// using the chain rule.
 		auto& forces = snapshot->GetForces();
@@ -139,7 +81,7 @@ namespace SSAGES
 		std::string line; 
 
 		auto dim = widths_.size();
-		double iteration = 0, height = 0;
+		double iteration = 0, height=0;
 		std::vector<double> width(dim, 0.), center(dim, 0);
 
 		// First line is a comment. 
@@ -157,79 +99,12 @@ namespace SSAGES
 			for(size_t i = 0; i < dim; ++i)
 				iss >> width[i];
 			
-			// Load height. 
-			iss >> height;
+      iss >> height;
 
 			hills_.emplace_back(center, width, height);
 		}
 	}
 
-	// Drop a new hill.
-	void Meta::AddHill(const CVList& cvs, int iteration)
-	{
-		int n = cvs.size();
-
-		// Assume we have the same number of procs per walker.
-		int nwalkers = world_.size()/comm_.size();
-
-		// We need to exchange CV values across the walkers 
-		// and to each proc on a walker.	
-		std::vector<double> cvals(n*nwalkers, 0);
-
-		if(comm_.rank() == 0)
-		{
-			for(auto i = 0, j = world_.rank()/comm_.size()*n; i < n; ++i,++j)
-				cvals[j] = cvs[i]->GetValue();
-		}
-
-		// Reduce across all processors and add hills.
-		MPI_Allreduce(MPI_IN_PLACE, cvals.data(), n*nwalkers, MPI_DOUBLE, MPI_SUM, world_);
-		
-		for(int i = 0; i < n*nwalkers; i += n)
-		{
-			std::vector<double> cval(cvals.begin() + i, cvals.begin() + i + n);
-			hills_.emplace_back(cval, widths_, height_);
-			
-			// Write hill to file.
-			if(world_.rank() == 0)
-				PrintHill(hills_.back(), iteration);
-		}
-
-		// If grid is defined, add bias onto grid. 
-		if(grid_ != nullptr)
-		{
-			std::vector<double> dx(n, 0.0), df(n, 1.0);
-			auto& hill = hills_.back();
-			for(auto it = grid_->begin(); it != grid_->end(); ++it)
-			{
-				auto& val = *it;
-				auto coord = it.coordinates();
-
-				// Compute difference between grid point and current val. 
-				for(size_t i = 0; i < n; ++i)
-				{
-					dx[i] = -cvs[i]->GetDifference(coord[i]);
-					df[i] = 1.;
-				}
-
-				// Compute derivative.
-				for(size_t i = 0; i < n; ++i)
-				{
-					for(size_t j = 0; j < n; ++j)
-					{
-						if(j != i) 
-							df[i] *= gaussian(dx[j], hill.width[j]);
-						else
-							df[i] *= gaussianDerv(dx[j], hill.width[j]);
-					}
-				}
-
-				// Add to grid. 
-				for(size_t i = 0; i < n; ++i)
-					val[i] += height_*df[i];
-			}
-		}
-	}
 
 	// Writes hill to output file. This should only be called by the 
 	// world master node. 
@@ -237,7 +112,7 @@ namespace SSAGES
 	{
 		hillsout_.open("hills.out", std::fstream::app);
 		
-		hillsout_ << iteration << " ";
+		hillsout_ << iteration + setoff_  << " ";
 		hillsout_.precision(8);
 		
 		for(auto& cv : hill.center)
@@ -245,90 +120,88 @@ namespace SSAGES
 		
 		for(auto& w : hill.width)
 			hillsout_ << w << " ";
-
-		hillsout_ << height_ << std::endl;
+    
+		hillsout_ << hill.height << " ";
+    hillsout_ << std::endl;
 		hillsout_.close();
 	}
+  
+  void Meta::PrintPotential(const Hill& hill, int iteration)
+  {
+   // std::cerr << "printpotential in meta " << iteration << "   " << hill.height << std::endl;
+    potential_out_.open("potential.out", std::fstream::app);
+    //potential_out_ << "timestep: " << iteration << "   " << "hill height: " << hill.height << std::endl;
+    potential_out_ << iteration + setoff_ << "  " << hill.height << std::endl;
+    auto it = grid_potential_->begin();
+    for (; it != grid_potential_->end(); ++it)
+    {
+      auto& val = *it;
+      potential_out_ << val << "   ";
+    }
+    potential_out_ << std::endl;
+    potential_out_.close();
+  }
 
-	void Meta::CalcBiasForce(const CVList& cvs)
-	{	
-		// Reset bias and derivatives.
-		double bias = 0.;
-		auto n = cvs.size();
-
-		// Reset vectors.
-		std::fill(derivatives_.begin(), derivatives_.end(), 0);
-		
-		// Look up and apply grid bias. 
-		if(grid_ != nullptr)
-		{
-			bool inbounds = true;
-			std::vector<double> val(n, 0.);
-			for(size_t i = 0; i < n; ++i)
-			{
-				val[i] = cvs[i]->GetValue();
-				if(val[i] < grid_->GetLower(i) || val[i]  > grid_->GetUpper(i))
-					inbounds = false;
-			}
-
-			if(inbounds)
-			{
-				auto frc = (*grid_)[val];
-				for(size_t i = 0; i < n; ++i)
-					derivatives_[i] = frc[i];
-			}
-			else
-			{
-				if(comm_.rank() == 0)
-				{
-					std::cerr << "Metadynamics: out of bounds ( ";
-					for(auto& v : val)
-						std::cerr << v << " "; 
-					std::cerr << ")" << std::endl;
-				}
-			}
-		}
-		else
-		{
-			// Loop through hills and calculate the bias force.
-			for(auto& hill : hills_)
-			{		
-				auto tbias = 1.;
-				std::fill(tder_.begin(), tder_.end(), 1.0);
-				std::fill(dx_.begin(), dx_.end(), 1.0);
-				
-				for(size_t i = 0; i < n; ++i)
-				{
-					dx_[i] = cvs[i]->GetDifference(hill.center[i]);
-					tbias *= gaussian(dx_[i], hill.width[i]);
-				}
-
-				for(size_t i = 0; i < n; ++i)
-					for(size_t j = 0; j < n; ++j)
-					{
-						if(j != i) 
-							tder_[i] *= gaussian(dx_[j], hill.width[j]);
-						else
-							tder_[i] *= gaussianDerv(dx_[j], hill.width[j]);
-					}
-
-				bias += height_ * tbias;
-				for(size_t i = 0; i < n; ++i)
-					derivatives_[i] += height_*tder_[i];
-			}
-		}
-
-		// Restraints.
-		for(size_t i = 0; i < n; ++i)
-		{
-			auto cval = cvs[i]->GetValue();
-			if(cval < lowerb_[i])
-				derivatives_[i] += lowerk_[i]*(cval - lowerb_[i]);
-			else if(cval > upperb_[i])
-				derivatives_[i] += upperk_[i]*(cval - upperb_[i]);
-		}
-	}
-
+  void Meta::ReadPotential(int timestep) {
+    potential_initial_ = true;
+    std::ifstream read_potential;
+    std::string line, line1, line2, line3;
+    int iteration = 0;
+    if (timestep < 0) {
+      read_potential.open("potential.out");
+      while(std::getline(read_potential, line1)) {
+        line3 = line2;
+        line2 = line1;
+      }
+      read_potential.close();
+      std::istringstream iss(line3);
+      std::cout << "setoff:  " << setoff_ <<"   height: " << height_ << std::endl;
+      iss >> setoff_;
+      iss >> height_;
+      std::cout << "setoff:  " << setoff_ <<"   height: " << height_ << std::endl;
+      iss.clear();
+      iss.str(line2);
+      auto it = grid_potential_->begin();
+      for(; it != grid_potential_->end(); ++it)
+      {
+        auto& val =  *it;
+        iss >> val;
+      }
+    }
+    else {
+      read_potential.open("potential_pre.out");
+      hillsout_.open("hills.out");
+      hillsout_.close();
+      while (std::getline(read_potential, line)) {
+        std::istringstream iss(line);
+        iss >> iteration;
+        if (iteration == timestep) {
+          iss >> height_;
+          setoff_ = timestep;
+          getline(read_potential, line);
+          read_potential.close();
+          std::istringstream iss(line);
+          auto it = grid_potential_->begin();
+          for(; it != grid_potential_->end(); ++it)
+          {
+            auto& val =  *it;
+            iss >> val;
+          }
+          potential_out_.open("potential.out");
+          potential_out_ << "step" << "   " << "height" << std::endl;
+          potential_out_ << setoff_ << "   " << height_ << std::endl;
+          it = grid_potential_->begin();
+          for (; it != grid_potential_->end(); ++it)
+          {
+            auto& val = *it;
+            potential_out_ << val << "   ";
+          }
+          potential_out_ << std::endl;
+          break;
+        }
+      }
+    }
+  }
 	Meta* Meta::Build(const Json::Value& json, 
 		                  const MPI_Comm& world,
 		                  const MPI_Comm& comm,
@@ -349,11 +222,16 @@ namespace SSAGES
 		std::vector<double> widths;
 		for(auto& s : json["widths"])
 			widths.push_back(s.asDouble());
-
+    
+    auto height = json.get("height", 1.0).asDouble();
 		std::vector<double> lowerb, upperb, lowerk, upperk;
 		Grid<Vector>* grid = nullptr;
-		if(json.isMember("grid"))
+    Grid<double>* grid_potential = nullptr;
+		if(json.isMember("grid")) 
+    {
 			grid = Grid<Vector>::BuildGrid(json.get("grid", Json::Value()));
+      grid_potential = Grid<double>::BuildGrid(json.get("grid", Json::Value()));
+    }
 		else if(!json.isMember("lower_bounds") || !json.isMember("upper_bounds"))
 			throw BuildException({
 				"#/Method/Metadynamics: Both upper_bounds and lower_bounds "
@@ -366,21 +244,71 @@ namespace SSAGES
 			upperk.push_back(json["upper_bound_restraints"][i].asDouble());
 			lowerb.push_back(json["lower_bounds"][i].asDouble());
 			upperb.push_back(json["upper_bounds"][i].asDouble());
-		}
-	
-		auto height = json.get("height", 1.0).asDouble();
+		}	
 		auto hillfreq = json.get("hill_frequency", 1).asInt();
+    auto potential_freq = json.get("potential_freq", 0).asInt();
 		auto freq = json.get("frequency", 1).asInt();
+    auto flavor = json.get("flavor", "none").asString();
+    if (flavor == "WellTemperedMeta") {
+      if(!json.isMember("grid")) {
+        throw BuildException({
+            "#/Method/Metadynamics: Grid "
+            "must be defined if WellTemperedMeta flavor is being used."});
+      }
+      if(!json.isMember("delta_T")) {
+        throw BuildException({
+            "#/Method/Metadynamics: delta_T "
+            "must be defined if WellTemperedMeta flavor is being used."});
+      }
+    //  grid_potential = Grid<double>::BuildGrid(json.get("grid", Json::Value()));
+      auto delta_T = json.get("delta_T", 0.0).asDouble();
+      auto* m = new WellTemperedMeta(
+          world, comm, height, widths, 
+          lowerb, upperb, lowerk, upperk,
+          grid, grid_potential, hillfreq, potential_freq, freq, delta_T
+          );
 
-		auto* m = new Meta(
-			world, comm, height, widths, 
-			lowerb, upperb, lowerk,	upperk,
-			grid, hillfreq, freq
-		);
+      if(json.isMember("load_hills")) {
+      	m->LoadHills(json["load_hills"].asString());
+      }
+      if(json.isMember("read_potential")) {
+        if(!json.isMember("grid")) {
+          throw BuildException({
+              "#/Method/Metadynamics: read_potential "
+              "grid must be defined if read_potential is used"});
+        }
+        std::cerr << "start to read potential" << std::endl;
+        auto timestep = json.get("read_potential", -1).asInt();
+        //std::cerr << "potential_initial: " <<potential_initial_ << std::endl;
+        m->ReadPotential(timestep);
+        //std::cerr << "potential_initial: " <<potential_initial_ << std::endl;
+      }
+      return m;
+    }
+    
+    else if (flavor == "Standard") {
+      auto* m = new StandardMeta(
+      world, comm, height, widths, 
+      lowerb, upperb, lowerk,	upperk,
+      grid, grid_potential, hillfreq, potential_freq, freq
+      );
 
-		if(json.isMember("load_hills"))
-			m->LoadHills(json["load_hills"].asString());
+      if(json.isMember("load_hills"))
+      	m->LoadHills(json["load_hills"].asString());
+      if(json.isMember("read_potential")) {
+        if(!json.isMember("grid")) {
+          throw BuildException({
+              "#/Method/Metadynamics: read_potential "
+              "grid must be defined if read_potential is used"});
+        }
+        auto timestep = json.get("read_potential", 0).asInt();
+        m->ReadPotential(timestep);
+      }
+      return m;
+    }
 
-		return m;		
+    else {
+      throw BuildException({"Unknown flavor for metadynamics. The options are \"WellTemperedMeta\" or \"Default\""});
+    }
 	}
 }

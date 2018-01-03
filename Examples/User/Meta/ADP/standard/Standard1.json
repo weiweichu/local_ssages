@@ -1,0 +1,49 @@
+{
+    "walkers" : 1,
+    "input" : "in.ADP_Test",
+    "CVs": [
+        {
+            "periodic": true,
+            "type": "Torsional",
+            "atom_ids": [
+                5,
+                7,
+                9,
+                15
+            ]
+        },
+        {
+            "periodic": true,
+            "type": "Torsional",
+            "atom_ids": [
+                7,
+                9,
+                15,
+                17
+            ]
+        }
+    ],
+    "methods" : [
+        {
+            "type" : "Metadynamics",
+            "flavor" : "Standard",
+            "grid" : {
+                "lower" : [-3.14, -3.14],
+                "upper" : [3.14, 3.14],
+                "number_points" : [500, 500],
+                "periodic" : [true, true]
+            },
+            "widths" : [
+                0.3,
+                0.3
+            ],
+            "height" : 1,
+            "lower_bounds" : [-3.14, -3.14], 
+            "upper_bounds" : [3.14, 3.14],
+            "lower_bound_restraints" : [0, 0], 
+            "upper_bound_restraints" : [0, 0],
+            "hill_frequency" : 1000,
+            "potential_freq" : 50000
+        }
+    ]
+}

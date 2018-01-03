@@ -26,16 +26,25 @@
     "methods" : [
         {
             "type" : "Metadynamics",
+            "flavor" : "WellTemperedMeta",
+            "grid" : {
+                "lower" : [-3.14, -3.14],
+                "upper" : [3.14, 3.14],
+                "number_points" : [500, 500],
+                "periodic" : [true, true]
+            },
             "widths" : [
-                0.05,
-                0.05
+                0.3,
+                0.3
             ],
-            "height" : 0.5,
+            "height" : 1,
             "lower_bounds" : [-3.14, -3.14], 
             "upper_bounds" : [3.14, 3.14],
             "lower_bound_restraints" : [0, 0], 
             "upper_bound_restraints" : [0, 0],
-            "hill_frequency" : 500
+            "delta_T" : 500,
+            "hill_frequency" : 1000,
+            "potential_freq" : 50000
         }
     ]
 }
