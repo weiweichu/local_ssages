@@ -1,0 +1,111 @@
+{
+    "input": "in.LAMMPS_2DParticle",
+    "CVs": [
+        {
+            "atom_ids": [
+                1
+            ],
+            "type": "ParticleCoordinate",
+            "dimension": "x"
+        },
+        {
+            "atom_ids": [
+                1
+            ],
+            "type": "ParticleCoordinate",
+            "dimension": "y"
+        }
+    ],
+    "walkers": 16,
+    "methods": [
+        {
+            "flavor": "ElasticBand",
+            "evolution_steps": 50,
+            "tolerance": [
+                0.0001,
+                0.0001
+            ],
+            "ksprings": [
+                150,
+                150
+            ],
+            "cvs": [
+                0,
+                1
+            ],
+            "kstring": 1,
+            "frequency": 1,
+            "equilibration_steps": 1000,
+            "time_step": 0.1,
+            "block_iterations": 50,
+            "type": "String",
+            "centers": [
+                [
+                    -0.7,
+                    -0.5
+                ],
+                [
+                    -0.607,
+                    -0.4
+                ],
+                [
+                    -0.513,
+                    -0.3
+                ],
+                [
+                    -0.42,
+                    -0.2
+                ],
+                [
+                    -0.327,
+                    -0.1
+                ],
+                [
+                    -0.233,
+                    0.0
+                ],
+                [
+                    -0.14,
+                    0.1
+                ],
+                [
+                    -0.047,
+                    0.2
+                ],
+                [
+                    0.047,
+                    0.3
+                ],
+                [
+                    0.14,
+                    0.4
+                ],
+                [
+                    0.233,
+                    0.5
+                ],
+                [
+                    0.327,
+                    0.6
+                ],
+                [
+                    0.42,
+                    0.7
+                ],
+                [
+                    0.513,
+                    0.8
+                ],
+                [
+                    0.607,
+                    0.9
+                ],
+                [
+                    0.7,
+                    1.0
+                ]
+            ],
+            "max_iterations": 1000
+        }
+    ]
+}

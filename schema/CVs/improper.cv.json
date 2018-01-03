@@ -1,0 +1,26 @@
+{
+	"type" : "object",
+	"varname" : "ImproperCV",
+	"properties" : {
+		"type" : { 
+			"type" : "string",
+			"enum" : ["Improper"]
+		},
+		"atom ids" : {
+			"type" : "array",
+			"minItems" : 4,
+			"maxItems" : 4,
+			"items" : {
+				"type" : "integer"
+			}
+		},
+		"periodic" : {
+			"type" : "boolean"
+		}, 
+		"name" : {
+			"type" : "string"
+		}
+	},
+	"required": ["type", "atom ids"],
+	"additionalProperties": false
+}

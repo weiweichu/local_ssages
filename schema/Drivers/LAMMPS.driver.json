@@ -1,0 +1,44 @@
+{
+	"type": "object",
+	"varname" : "LAMMPSDriver",
+	"properties" : {
+		"type" : {
+			"type" : "string",
+			"enum" : ["LAMMPS"]
+		},
+		"MDSteps" : {
+			"type" : "integer",
+			"minimum" : 1
+		},
+		"logfile" : {
+			"type" : "string"
+		},
+		"inputfile" : {
+			"type" : "string"
+		},
+		"number processors" : {
+			"type" : "integer"
+		},
+		"CVs" : {
+			"type" : "array",
+			"minItems" : 1
+		},
+		"method" : {
+			"type" : "object"
+		},
+		"observers" : {
+			"type" : "array"
+		},
+		"restart file" : {
+			"type" : "string"
+		},
+		"read restart" : {
+			"type" : "boolean"
+		},
+		"constraints" : {
+			"type" : "object"
+		}
+	},
+	"required" : ["type", "MDSteps"],
+	"additionalProperties": false
+}

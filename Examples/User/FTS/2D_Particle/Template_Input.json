@@ -1,0 +1,31 @@
+{
+	"input" : "in.LAMMPS_2DParticle",
+	"walkers" : 16,
+	"CVs" : [
+		{
+			"type" : "ParticleCoordinate",
+			"atom_ids" : [1],
+			"dimension" : "x"
+		},
+		{
+			"type": "ParticleCoordinate",
+			"atom_ids" : [1],
+            "dimension" : "y"
+		}
+	],
+	"methods" : [
+		{
+			"type" : "String",
+			"flavor" : "FTS",
+			"centers" : [],
+			"max_iterations" : 1000,
+			"ksprings" : [750,750],
+			"frequency" : 1,
+			"cvs" : [0,1],
+			"block_iterations" : 50,
+			"time_step" : 0.1,
+			"kappa" : 0.1,
+			"umbrella_iterations" : 2000
+		}
+	]
+}
